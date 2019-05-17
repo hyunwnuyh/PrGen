@@ -1,0 +1,4 @@
+#!/bin/bash
+perl ./pgc.pl -c99 -exe sample
+cd sample
+./build.sh
