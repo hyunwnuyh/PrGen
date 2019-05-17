@@ -2,6 +2,8 @@
 use FindBin qw($Bin);
 use Cwd qw(getcwd);
 use File::Path qw(make_path);
+use File::Find qw(finddepth);
+use File::Copy qw(copy);
 
 if ($#ARGV < 0) {
     help();
@@ -13,6 +15,8 @@ $std = "c99";
 $build = "exe";
 $flag = 0;
 
+@templates = ();
+
 $i = 0;
 for (; $i < $#ARGV + 1; $i++) {
     $c = substr $ARGV[$i], 0, 1;
@@ -20,8 +24,6 @@ for (; $i < $#ARGV + 1; $i++) {
         $opt = substr $ARGV[$i], 1;
         if ($opt eq "c11") {
             $std = "c11";
-        } elsif ($opt eq "lib") {
-            $build = "lib";
         } elsif ($opt eq "h") {
             help();
             die;
@@ -51,13 +53,63 @@ if (-d $dir) {
     make_path $dir;
 }
 
-if (not -d "$dir/src") {
-    make_path "$dir/src";
+
+open LIST, "<$Bin/template/.list";
+while ($line = <LIST>) {
+    $line =~ s/\n//g;
+    push @templates, $line;
 }
-if (not -d "$dir/inc") {
-    make_path "$dir/inc";
+close LIST;
+
+$j = 0;
+print "Project template list\n";
+print "-------------------------------\n";
+for (; $j <= $#templates; $j++) {
+    open TEMP, "<$Bin/template/$templates[$j]/.template";
+    print "$j: " . substr(<TEMP>, 5);
+    close TEMP;
 }
-open CML, "<$Bin/CMakeLists.txt";
+$j--;
+print "Select project template(0 - $j): ";
+
+$key = substr(<STDIN>, 0, 1);
+if ($key =~ /^-?\d+$/) {
+    $key = $key * 1;
+    if ($key <= $j && $key >= 0) {
+        $flag = 0;
+    }
+}
+
+while ($flag) {
+    print "Please answer in degree (0 - $j): ";
+    $key = substr(<STDIN>, 0, 1);
+    if ($key =~ /^-?\d+$/) {
+        $key = $key * 1;
+        if ($key <= $j && $key >=0 ) {
+            last;
+        }
+    }
+}
+
+File::Find::find(sub {
+        $file = $File::Find::name;
+        if (-e $file) {
+            print "$file\n";
+            if (-f $file) {
+                if (!(substr($file, rindex($file, "/") + 1, 1) eq ".")) {
+                    $str = substr $file, length("$Bin/template/$templates[$key]");
+                    print "Copy $file to $dir$str\n";
+                    copy($file, "$dir$str");
+                }
+            } elsif (-d $file) {
+                $str = substr $file, length("$Bin/template/$templates[$key]");
+                print "Create directory $dir$str\n";
+                make_path("$dir$str");
+            }
+        }
+    }, "$Bin/template/$templates[$key]" );
+
+open CML, "<$Bin/template/$templates[$key]/CMakeLists.txt";
 open OUT, ">$dir/CMakeLists.txt";
 while ($line = <CML>) {
     $line =~ s/<proj_name>/$ARGV[$i]/g;
@@ -68,20 +120,7 @@ while ($line = <CML>) {
     }
     print OUT $line;
 }
-if ($build eq "exe") {
-    print OUT "add_executable ( $ARGV[$i].out \${SRC_FILES} )";
-} elsif ($build eq "lib") {
-    print OUT "add_library ( $ARGV[$i] main.c \${SRC_FILES} )";
-}
-
 close CML;
-close OUT;
-
-open OUT, ">$dir/src/main.c";
-print OUT "#include <stdio.h>\n\n";
-print OUT "int main (int argc, char *argv[]) {\n";
-print OUT "\treturn 0\;\n";
-print OUT "}";
 close OUT;
 
 open OUT, ">$dir/build.sh";
@@ -89,9 +128,6 @@ print OUT "#!/bin/bash\n";
 print OUT "cmake -Bbuild -H.\n";
 print OUT "cd build\n";
 print OUT "make\n";
-if ($build eq "exe") {
-    print OUT "../$ARGV[$i].out";
-}
 close OUT;
 chmod 0777, "$dir/build.sh";
 
@@ -103,8 +139,6 @@ sub help {
     print "-------------------------------------\n";
     print "c99            C99 standard (default)\n";
     print "c11            C11 standard\n";
-    print "exe            Output is executable (default)\n";
-    print "bin            Output is library \n";
     print "h              help (ignore other opts)\n";
     print "\n";
 }
