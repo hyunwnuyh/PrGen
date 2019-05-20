@@ -1,0 +1,1 @@
+/usr/bin/gcc   -rdynamic CMakeFiles/sample.out.dir/src/main.c.o  -o ../sample.out  -L/home/hyunw/perl/PrGen/sample/lib 
