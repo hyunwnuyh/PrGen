@@ -1,3 +1,0 @@
-/home/hyunw/perl/PrGen/sample/build/CMakeFiles/rebuild_cache.dir
-/home/hyunw/perl/PrGen/sample/build/CMakeFiles/sample.out.dir
-/home/hyunw/perl/PrGen/sample/build/CMakeFiles/edit_cache.dir
