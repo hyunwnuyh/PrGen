@@ -1,7 +1,0 @@
-#!/bin/bash
-perl ./pgc.pl sample
-cd sample
-./build.sh
-cd ..
-perl ./pgtmgr.pl c add sample
-perl ./pgtmgr.pl c list
