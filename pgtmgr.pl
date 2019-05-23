@@ -41,6 +41,9 @@ if ($ARGV[1] eq "add") {
     
     print "Copying $dir directory to $dest\n";
     system "cp -r $dir $dest";
+    if (-d "$dest/build") {
+        system "rm -rf $dest/build";
+    }
 
     print "create .template in $dest\n";
     open TEMP, ">$dest/.template";
@@ -51,6 +54,23 @@ if ($ARGV[1] eq "add") {
     open LIST, ">>$Bin/template/.list-$lang";
     print LIST "$fold\n";
     close LIST;
+
+    print "Modify $fold/CMakeLists.txt\n";
+    open CMLI, "<$dir/CMakeLists.txt";
+    open CMLO, ">$dest/CMakeLists.txt";
+    while ($line = <CMLI>) {
+        if ($line =~ m"CMAKE_C_STANDARD") {
+            $line = "set ( CMAKE_C_STANDARD <std> )\n";
+        } elsif ($line =~ m"set\s\(\sPROJECT_NAME") {
+            $line = "set ( PROJECT_NAME <proj_name> )\n";
+        } elsif ($line =~ m"add_executable" || $line =~ m"add_library") {
+            $line =~ s"\(\s+\w+\s+"( <proj_name> ";
+        } 
+
+        print CMLO "$line";
+    }
+    close CMLO;
+    close CMLI;
 
 } elsif ($ARGV[1] eq "remove") {
     # Remove template
@@ -120,7 +140,7 @@ sub print_tlist {
         $j++;
     }
     close LIST;
-    print "-----------------------------------------------\n";
+    print "-----------------------------------------------\n\n";
     return $j - 1, \@templist;
 }
 
@@ -156,7 +176,7 @@ sub help {
     print "add              add directory to templates\n";
     print "remove           remove template\n";
     print "modify           modify template information\n";
-    print "list             list ";
+    print "list             show templates list\n";
     print "help             help\n";
     print "-----------------------------------------------\n";
 }
